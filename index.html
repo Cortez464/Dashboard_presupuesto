@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Presupuesto Personal</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .sync-status {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+
+        .sync-status.synced {
+            background: rgba(16, 185, 129, 0.3);
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #555;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .card .amount {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .card.income .amount {
+            color: #10b981;
+        }
+
+        .card.expense .amount {
+            color: #ef4444;
+        }
+
+        .card.balance .amount {
+            color: #3b82f6;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-export {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-export:hover {
+            background: #059669;
+        }
+
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-container h3 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .history-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+        }
+
+        .history-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .movements-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .movement-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+        }
+
+        .movement-item:hover {
+            transform: translateX(5px);
+        }
+
+        .movement-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .movement-desc {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .movement-meta {
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .movement-amount {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .movement-amount.income {
+            color: #10b981;
+        }
+
+        .movement-amount.expense {
+            color: #ef4444;
+        }
+
+        .movement-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: all 0.2s;
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #2563eb;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #dc2626;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            background: #667eea;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .movement-item {
+                grid-template-columns: 1fr;
+            }
+
+            .movement-actions {
+                justify-content: flex-start;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Dashboard de Presupuesto Personal</h1>
+            <p>Controla tus finanzas de manera inteligente</p>
+            <div class="sync-status" id="syncStatus">🔄 Sincronizando...</div>
+        </header>
+
+        <div class="main-content">
+            <!-- Resumen de totales -->
+            <div class="summary-cards">
+                <div class="card income">
+                    <h3>Total Ingresos</h3>
+                    <div class="amount" id="totalIncome">$0.00</div>
+                </div>
+                <div class="card expense">
+                    <h3>Total Gastos</h3>
+                    <div class="amount" id="totalExpense">$0.00</div>
+                </div>
+                <div class="card balance">
+                    <h3>Balance</h3>
+                    <div class="amount" id="balance">$0.00</div>
+                </div>
+            </div>
+
+            <!-- Formulario -->
+            <div class="form-section">
+                <h2>➕ Agregar Movimiento</h2>
+                <form id="movementForm">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="description">Descripción</label>
+                            <input type="text" id="description" required placeholder="Ej: Salario mensual">
+                        </div>
+                        <div class="form-group">
+                            <label for="amount">Monto</label>
+                            <input type="number" id="amount" step="0.01" required placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="type">Tipo</label>
+                            <select id="type" required>
+                                <option value="income">Ingreso</option>
+                                <option value="expense">Gasto</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="category">Categoría</label>
+                            <select id="category" required>
+                                <option value="Salario">Salario</option>
+                                <option value="Deducciones">Deducciones</option>
+                                <option value="Inversiones">Inversiones</option>
+                                <option value="Alimentación">Alimentación</option>
+                                <option value="Transporte">Transporte</option>
+                                <option value="Vivienda">Vivienda</option>
+                                <option value="Entretenimiento">Entretenimiento</option>
+                                <option value="Salud">Salud</option>
+                                <option value="Educación">Educación</option>
+                                <option value="Regalo">Regalo</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Agregar Movimiento</button>
+                </form>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filters-section">
+                <h2>🔍 Filtros</h2>
+                <div class="filters-grid">
+                    <div class="form-group">
+                        <label for="filterCategory">Filtrar por Categoría</label>
+                        <select id="filterCategory">
+                            <option value="">Todas las categorías</option>
+                            <option value="Salario">Salario</option>
+                            <option value="Deducciones">Deducciones</option>
+                            <option value="Inversiones">Inversiones</option>
+                            <option value="Alimentación">Alimentación</option>
+                            <option value="Transporte">Transporte</option>
+                            <option value="Vivienda">Vivienda</option>
+                            <option value="Entretenimiento">Entretenimiento</option>
+                            <option value="Salud">Salud</option>
+                            <option value="Educación">Educación</option>
+                            <option value="Regalo">Regalo</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="filterDateFrom">Desde</label>
+                        <input type="date" id="filterDateFrom">
+                    </div>
+                    <div class="form-group">
+                        <label for="filterDateTo">Hasta</label>
+                        <input type="date" id="filterDateTo">
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-secondary" id="clearFilters">Limpiar Filtros</button>
+                    </div>
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <button class="btn btn-export" id="exportBtn">Exportar CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficas -->
+            <div class="charts-section">
+                <div class="chart-container">
+                    <h3>📊 Ingresos vs Gastos</h3>
+                    <canvas id="donutChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>📈 Evolución del Balance</h3>
+                    <canvas id="lineChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>📊 Gastos por Categoría</h3>
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Historial -->
+            <div class="history-section">
+                <h2>📋 Historial de Movimientos</h2>
+                <div class="movements-list" id="movementsList">
+                    <div class="loading">Cargando movimientos...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const state = {
+            movements: [],
+            editingId: null,
+            charts: {},
+            isLoading: true
+        };
+
+         // URL de tu API de Google Apps Script (¡PÉGALA AQUÍ ABAJO!)
+        const API_URL = "https://script.google.com/macros/s/AKfycbxaYqqRUeieQbvqXdoAT5BSOl8SF1sf51c8NhLsOP25DUQgl6ZD1m207XNGwPuKYs_2/exec"; 
+
+        // Sistema de almacenamiento persistente conectado a Google Sheets
+        const Storage = {
+            async save(movements) {
+                try {
+                    // Enviamos los datos a Google Sheets
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        // Usamos text/plain para evitar problemas de CORS en Apps Script
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(movements)
+                    });
+                    
+                    this.updateSyncStatus(true);
+                    return true;
+                } catch (error) {
+                    console.error('Error al guardar en Drive:', error);
+                    this.updateSyncStatus(false);
+                    return false;
+                }
+            },
+
+            async load() {
+                try {
+                    const response = await fetch(API_URL);
+                    const data = await response.json();
+                    
+                    // Asegurarnos de que los números sean números y no strings
+                    return data.map(m => ({
+                        ...m,
+                        amount: parseFloat(m.amount)
+                    }));
+                } catch (error) {
+                    console.error('Error al cargar de Drive:', error);
+                    return [];
+                }
+            },
+
+            updateSyncStatus(success) {
+                const statusEl = document.getElementById('syncStatus');
+                if (success) {
+                    statusEl.textContent = '✓ Guardado en Drive';
+                    statusEl.classList.add('synced');
+                } else {
+                    statusEl.textContent = '⚠ Error de conexión';
+                    statusEl.classList.remove('synced');
+                }
+            }
+        };
+
+        // Formatear moneda
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-SV', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        // Formatear fecha
+        function formatDate(date) {
+            return new Date(date).toLocaleDateString('es-SV', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Obtener movimientos filtrados
+        function getFilteredMovements() {
+            let filtered = [...state.movements];
+            
+            const category = document.getElementById('filterCategory').value;
+            const dateFrom = document.getElementById('filterDateFrom').value;
+            const dateTo = document.getElementById('filterDateTo').value;
+
+            if (category) {
+                filtered = filtered.filter(m => m.category === category);
+            }
+
+            if (dateFrom) {
+                filtered = filtered.filter(m => m.date >= dateFrom);
+            }
+
+            if (dateTo) {
+                filtered = filtered.filter(m => m.date <= dateTo);
+            }
+
+            return filtered;
+        }
+
+        // Calcular totales
+        function calculateTotals() {
+            const filtered = getFilteredMovements();
+            
+            const income = filtered
+                .filter(m => m.type === 'income')
+                .reduce((sum, m) => sum + m.amount, 0);
+
+            const expense = filtered
+                .filter(m => m.type === 'expense')
+                .reduce((sum, m) => sum + m.amount, 0);
+
+            const balance = income - expense;
+
+            document.getElementById('totalIncome').textContent = formatCurrency(income);
+            document.getElementById('totalExpense').textContent = formatCurrency(expense);
+            document.getElementById('balance').textContent = formatCurrency(balance);
+
+            return { income, expense, balance };
+        }
+
+        // Renderizar lista de movimientos
+        function renderMovements() {
+            const container = document.getElementById('movementsList');
+            const filtered = getFilteredMovements();
+
+            if (state.isLoading) {
+                container.innerHTML = '<div class="loading">Cargando movimientos...</div>';
+                return;
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty-state">No hay movimientos registrados</div>';
+                return;
+            }
+
+            container.innerHTML = filtered
+                .sort((a, b) => new Date(b.date) - new Date(a.date))
+                .map(movement => `
+                    <div class="movement-item">
+                        <div class="movement-info">
+                            <div class="movement-desc">
+                                ${movement.description}
+                                <span class="category-badge">${movement.category}</span>
+                            </div>
+                            <div class="movement-meta">${formatDate(movement.date)}</div>
+                        </div>
+                        <div class="movement-amount ${movement.type}">
+                            ${movement.type === 'income' ? '+' : '-'}${formatCurrency(movement.amount)}
+                        </div>
+                        <div class="movement-actions">
+                            <button class="btn-small btn-edit" onclick="editMovement('${movement.id}')">Editar</button>
+                            <button class="btn-small btn-delete" onclick="deleteMovement('${movement.id}')">Eliminar</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        // Crear gráfica de dona
+        function createDonutChart() {
+            const totals = calculateTotals();
+            const ctx = document.getElementById('donutChart');
+
+            if (state.charts.donut) {
+                state.charts.donut.destroy();
+            }
+
+            state.charts.donut = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ingresos', 'Gastos'],
+                    datasets: [{
+                        data: [totals.income, totals.expense],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Crear gráfica de línea
+        function createLineChart() {
+            const filtered = getFilteredMovements();
+            const sorted = [...filtered].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            let balance = 0;
+            const data = sorted.map(m => {
+                balance += m.type === 'income' ? m.amount : -m.amount;
+                return {
+                    date: m.date,
+                    balance: balance
+                };
+            });
+
+            const ctx = document.getElementById('lineChart');
+
+            if (state.charts.line) {
+                state.charts.line.destroy();
+            }
+
+            state.charts.line = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => formatDate(d.date)),
+                    datasets: [{
+                        label: 'Balance',
+                        data: data.map(d => d.balance),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Crear gráfica de barras
+        function createBarChart() {
+            const filtered = getFilteredMovements();
+            const expenses = filtered.filter(m => m.type === 'expense');
+            
+            const categoryTotals = {};
+            expenses.forEach(m => {
+                categoryTotals[m.category] = (categoryTotals[m.category] || 0) + m.amount;
+            });
+
+            const ctx = document.getElementById('barChart');
+
+            if (state.charts.bar) {
+                state.charts.bar.destroy();
+            }
+
+            state.charts.bar = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(categoryTotals),
+                    datasets: [{
+                        label: 'Gastos',
+                        data: Object.values(categoryTotals),
+                        backgroundColor: '#ef4444'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Actualizar todas las gráficas
+        function updateCharts() {
+            createDonutChart();
+            createLineChart();
+            createBarChart();
+        }
+
+        // Actualizar toda la interfaz
+        function updateUI() {
+            calculateTotals();
+            renderMovements();
+            updateCharts();
+        }
+
+        // Agregar movimiento
+        async function addMovement(data) {
+            const movement = {
+                id: Date.now().toString(),
+                description: data.description,
+                amount: parseFloat(data.amount),
+                type: data.type,
+                category: data.category,
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            state.movements.push(movement);
+            await Storage.save(state.movements);
+            updateUI();
+        }
+
+        // Editar movimiento
+        function editMovement(id) {
+            const movement = state.movements.find(m => m.id === id);
+            if (!movement) return;
+
+            document.getElementById('description').value = movement.description;
+            document.getElementById('amount').value = movement.amount;
+            document.getElementById('type').value = movement.type;
+            document.getElementById('category').value = movement.category;
+            
+
+            state.editingId = id;
+            document.getElementById('submitBtn').textContent = 'Actualizar Movimiento';
+        }
+
+        // Actualizar movimiento
+        async function updateMovement(id, data) {
+            const index = state.movements.findIndex(m => m.id === id);
+            if (index === -1) return;
+
+            state.movements[index] = {
+                ...state.movements[index],
+                description: data.description,
+                amount: parseFloat(data.amount),
+                type: data.type,
+                category: data.category
+            };
+
+            await Storage.save(state.movements);
+            updateUI();
+        }
+
+        // Eliminar movimiento
+        async function deleteMovement(id) {
+            if (!confirm('¿Estás seguro de eliminar este movimiento?')) return;
+
+            state.movements = state.movements.filter(m => m.id !== id);
+            await Storage.save(state.movements);
+            updateUI();
+        }
+
+        // Exportar a CSV
+        function exportToCSV() {
+            const filtered = getFilteredMovements();
+            if (filtered.length === 0) {
+                alert('No hay movimientos para exportar');
+                return;
+            }
+
+            const headers = ['Descripción', 'Monto', 'Tipo', 'Categoría', 'Fecha'];
+            const rows = filtered.map(m => [
+                m.description,
+                m.amount,
+                m.type === 'income' ? 'Ingreso' : 'Gasto',
+                m.category,
+                m.date
+            ]);
+
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.join(','))
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `presupuesto_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Inicializar aplicación
+        async function initApp() {
+            try {
+                state.movements = await Storage.load();
+                state.isLoading = false;
+                updateUI();
+                Storage.updateSyncStatus(true);
+            } catch (error) {
+                console.error('Error al inicializar:', error);
+                state.isLoading = false;
+                Storage.updateSyncStatus(false);
+                updateUI();
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('movementForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                description: document.getElementById('description').value,
+                amount: document.getElementById('amount').value,
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value
+            };
+
+            if (state.editingId) {
+                await updateMovement(state.editingId, data);
+                state.editingId = null;
+                document.getElementById('submitBtn').textContent = 'Agregar Movimiento';
+            } else {
+                await addMovement(data);
+            }
+
+            e.target.reset();
+        });
+
+        document.getElementById('filterCategory').addEventListener('change', updateUI);
+        document.getElementById('filterDateFrom').addEventListener('change', updateUI);
+        document.getElementById('filterDateTo').addEventListener('change', updateUI);
+
+        document.getElementById('clearFilters').addEventListener('click', () => {
+            document.getElementById('filterCategory').value = '';
+            document.getElementById('filterDateFrom').value = '';
+            document.getElementById('filterDateTo').value = '';
+            updateUI();
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', exportToCSV);
+
+        // Exponer funciones al scope global
+        
+        window.editMovement = editMovement;
+        window.deleteMovement = deleteMovement;
+        
+
+        // Iniciar la aplicación
+        initApp();
+    </script>
+</body>
+</html>
